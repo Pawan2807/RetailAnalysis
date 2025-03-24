@@ -1,40 +1,42 @@
 pipeline {
     agent any
-    
+
     environment {
-        LABS = credentials('lab')
+        LABS = credentials('labcreds')
         JAVA_HOME = '/opt/bitnami/java' // Set JAVA_HOME
         PATH = "${env.JAVA_HOME}/bin:${env.PATH}" // Add Java to PATH
     }
 
     stages {
-        stage('Checkout Code') {
+        stage('Verify System Dependencies') {
             steps {
                 script {
-                    // Ensure Git is installed
+                    // Check if Git is installed
                     sh '''
                     if ! command -v git &>/dev/null; then
-                        echo "Git is not installed. Installing..."
-                        sudo apt-get update && sudo apt-get install -y git
+                        echo "ERROR: Git is not installed. Please install Git manually."
+                        exit 1
+                    else
+                        echo "Git is already installed."
                     fi
                     '''
-                }
-                // Checkout from repository (modify with your repo URL)
-                checkout scm
-            }
-        }
-        
-        stage('Install System Dependencies') {
-            steps {
-                script {
-                    // Install python3-venv if missing
+
+                    // Check if python3-venv is installed
                     sh '''
                     if ! dpkg -s python3-venv >/dev/null 2>&1; then
-                        echo "Installing python3-venv package..."
-                        sudo apt-get update && sudo apt-get install -y python3-venv
+                        echo "ERROR: python3-venv is not installed. Please install it manually."
+                        exit 1
+                    else
+                        echo "python3-venv is installed."
                     fi
                     '''
                 }
+            }
+        }
+
+        stage('Checkout Code') {
+            steps {
+                checkout scm
             }
         }
 
