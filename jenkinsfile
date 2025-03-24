@@ -8,26 +8,15 @@ pipeline {
     }
 
     stages {
-        stage('Verify System Dependencies') {
+        stage('Verify Python & Venv') {
             steps {
                 script {
-                    // Correct Git check
                     sh '''
-                    if command -v git &>/dev/null; then
-                        echo "Git is installed."
-                    else
-                        echo "ERROR: Git is not installed. Please install it manually."
-                        exit 1
-                    fi
-                    '''
-
-                    // Correct python3-venv check
-                    sh '''
-                    if python3 -m ensurepip --version &>/dev/null; then
-                        echo "python3-venv is installed."
-                    else
+                    if ! python3 -m ensurepip --version &>/dev/null; then
                         echo "ERROR: python3-venv is not installed. Please install it manually."
                         exit 1
+                    else
+                        echo "python3-venv is installed."
                     fi
                     '''
                 }
@@ -44,14 +33,14 @@ pipeline {
             steps {
                 script {
                     sh 'rm -rf retail_pipeline_venv'
-                    sh 'python3 -m venv retail_pipeline_venv'
+                    sh 'python3 -m venv retail_pipeline_venv || (echo "Virtualenv creation failed. Check python3-venv installation!" && exit 1)'
                     sh './retail_pipeline_venv/bin/pip install --upgrade pip'
                     sh './retail_pipeline_venv/bin/pip install pipenv'
                 }
             }
         }
 
-        stage('Install Project Dependencies') {
+        stage('Install Dependencies') {
             steps {
                 script {
                     sh './retail_pipeline_venv/bin/pipenv install'
@@ -62,8 +51,6 @@ pipeline {
         stage('Run Tests') {
             steps {
                 script {
-                    sh 'echo $JAVA_HOME'
-                    sh 'echo $PATH'
                     sh './retail_pipeline_venv/bin/pipenv run pytest'
                 }
             }
@@ -77,12 +64,12 @@ pipeline {
             }
         }
 
-        stage('Deploy to Server') {
+        stage('Deploy') {
             steps {
                 script {
                     sh '''
                     sshpass -p "$LABS_PSW" scp -o StrictHostKeyChecking=no -r \
-                    retailproject.zip "$LABS_USR"@g02.itversity.com:/home/itv013301/retailproject
+                    retailproject.zip "$LABS_USR"@g01.itversity.com:/home/itv013301/retailproject
                     '''
                 }
             }
