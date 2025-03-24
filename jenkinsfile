@@ -3,31 +3,31 @@ pipeline {
 
     environment {
         LABS = credentials('lab')
-        JAVA_HOME = '/opt/bitnami/java' // Set JAVA_HOME
-        PATH = "${env.JAVA_HOME}/bin:${env.PATH}" // Add Java to PATH
+        JAVA_HOME = '/opt/bitnami/java'
+        PATH = "${env.JAVA_HOME}/bin:${env.PATH}"
     }
 
     stages {
         stage('Verify System Dependencies') {
             steps {
                 script {
-                    // Check if Git is installed
+                    // Correct Git check
                     sh '''
-                    if ! command -v git &>/dev/null; then
-                        echo "ERROR: Git is not installed. Please install Git manually."
-                        exit 1
+                    if command -v git &>/dev/null; then
+                        echo "Git is installed."
                     else
-                        echo "Git is already installed."
+                        echo "ERROR: Git is not installed. Please install it manually."
+                        exit 1
                     fi
                     '''
 
-                    // Check if python3-venv is installed
+                    // Correct python3-venv check
                     sh '''
-                    if ! dpkg -s python3-venv >/dev/null 2>&1; then
+                    if python3 -m ensurepip --version &>/dev/null; then
+                        echo "python3-venv is installed."
+                    else
                         echo "ERROR: python3-venv is not installed. Please install it manually."
                         exit 1
-                    else
-                        echo "python3-venv is installed."
                     fi
                     '''
                 }
@@ -43,13 +43,8 @@ pipeline {
         stage('Setup Virtual Environment') {
             steps {
                 script {
-                    // Remove existing virtual environment if it exists
                     sh 'rm -rf retail_pipeline_venv'
-
-                    // Create a new virtual environment
                     sh 'python3 -m venv retail_pipeline_venv'
-
-                    // Upgrade pip and install pipenv
                     sh './retail_pipeline_venv/bin/pip install --upgrade pip'
                     sh './retail_pipeline_venv/bin/pip install pipenv'
                 }
@@ -59,7 +54,6 @@ pipeline {
         stage('Install Project Dependencies') {
             steps {
                 script {
-                    // Install dependencies using Pipenv
                     sh './retail_pipeline_venv/bin/pipenv install'
                 }
             }
@@ -68,11 +62,8 @@ pipeline {
         stage('Run Tests') {
             steps {
                 script {
-                    // Ensure JAVA_HOME is set correctly
                     sh 'echo $JAVA_HOME'
                     sh 'echo $PATH'
-
-                    // Run tests using pytest
                     sh './retail_pipeline_venv/bin/pipenv run pytest'
                 }
             }
@@ -81,7 +72,6 @@ pipeline {
         stage('Package Application') {
             steps {
                 script {
-                    // Create zip file but exclude the virtual environment
                     sh 'zip -r retailproject.zip . -x "retail_pipeline_venv/*"'
                 }
             }
@@ -90,7 +80,6 @@ pipeline {
         stage('Deploy to Server') {
             steps {
                 script {
-                    // Deploy using SCP
                     sh '''
                     sshpass -p "$LABS_PSW" scp -o StrictHostKeyChecking=no -r \
                     retailproject.zip "$LABS_USR"@g02.itversity.com:/home/itv013301/retailproject
