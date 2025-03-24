@@ -2,16 +2,16 @@ pipeline {
     agent any
     
     environment {
-        LABS = credentials('lab')
-        JAVA_HOME = '/opt/bitnami/java' // Set your JAVA_HOME path
-        PATH = "${JAVA_HOME}/bin:${env.PATH}" // Add Java binaries to PATH
+        LABS = credentials('labcreds')
+        JAVA_HOME = '/opt/bitnami/java' // Set your JAVA_HOME path here.
+        PATH = "${env.JAVA_HOME}/bin:${env.PATH}" // Add Java binaries to PATH
     }
     
     stages {
         stage('Setup Virtual Environment') {
             steps {
                 script {
-                    // Create a virtual environment
+                    // Create a virtual environment with the project name (Retail pipeline)
                     sh 'python3 -m venv retail_pipeline_venv'
                     
                     // Upgrade pip and install pipenv in the virtual environment
@@ -20,39 +20,45 @@ pipeline {
                 }
             }
         }
-
+        
         stage('Install Dependencies') {
             steps {
                 script {
-                    // Install project dependencies using pipenv
+                    // Install your project dependencies (e.g., requirements.txt or Pipfile)
                     sh './retail_pipeline_venv/bin/pipenv install'
                 }
             }
         }
-
+        
         stage('Test') {
             steps {
                 script {
-                    // Display JAVA_HOME and PATH for debugging
+                    // Ensure JAVA_HOME is set for PySpark to work
                     sh 'echo $JAVA_HOME'
                     sh 'echo $PATH'
                     
-                    // Run tests using pytest
+                    // Run tests (assuming you are using pytest for tests)
                     sh './retail_pipeline_venv/bin/pipenv run pytest'
                 }
             }
         }
-
+        
         stage('Package') {
             steps {
                 script {
-                    // Create the zip file but exclude the virtual environment directory
+                    // Create the zip file but exclude the venv directory
                     sh 'zip -r retailproject.zip . -x "retail_pipeline_venv/*"'
                 }
             }
         }
-
+        
         stage('Deploy') {
             steps {
                 script {
-                    // Securely copy the packaged
+                    // Add deployment steps here (e.g., deploy to a server or cloud)
+                    sh 'sshpass -p "$LABS_PSW" scp -o StrictHostKeyChecking=no -r retailproject.zip "$LABS_USR"@g02.itversity.com:/home/itv012419/retailproject'
+                }
+            }
+        }
+    }
+}
